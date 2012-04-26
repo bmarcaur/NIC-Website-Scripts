@@ -1,6 +1,6 @@
 # Created by Nick Gerakines, open source and publically available under the
 # MIT license. Use this module at your own risk.
-# I'm an Erlang/Perl/C++ guy so please forgive my dirty ruby.
+# Repurposed for NIC by Brandon Marc-Aurele
 
 require 'rubygems'
 require 'sequel'
@@ -118,3 +118,6 @@ module NIC_BLOG_IMPORT
     return nil;
   end
 end
+
+## Actually Imports
+NIC_BLOG_IMPORT.process("MOVABLE_DATA", "root", "")
