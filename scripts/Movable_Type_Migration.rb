@@ -76,16 +76,20 @@ module NIC_BLOG_IMPORT
 
       # Grab the post content, be sure to append the addition text
       content = post[:text_more].nil? ? post[:text] : post[:text] + " \n" + post[:text_more]
-      if file_extension == 'html'
 
-      end
-
+      #if the body is blank do nothing
       next if content.nil?
+
+      # if the body is html, mark it as raw
+      if file_extension == 'html'
+        content = "{% raw %}\n" + content + '{% endraw %}'
+      end
 
       # Fix all the asset paths and move assets
       begin
         self.correct_post_assets(db, file_location, content)
       rescue
+        puts "An error occured when trying to move and correct the assets for post :"
         puts post.inspect
       end
 
