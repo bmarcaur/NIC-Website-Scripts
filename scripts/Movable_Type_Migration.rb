@@ -12,26 +12,26 @@ module NIC_BLOG_IMPORT
   # you've got unpublished, deleted or otherwise hidden posts please sift
   # through the created posts to make sure nothing is accidently published.
   POST_QUERY = "SELECT
-            mt_entry.entry_atom_id AS entry_type,
-            mt_entry.entry_basename AS entry_url_name,
-            mt_entry.entry_text AS text,
-            mt_entry.entry_text_more AS text_more,
-            mt_entry.entry_authored_on AS authored_on,
-            mt_entry.entry_title AS title,
-            mt_entry.entry_convert_breaks AS extension,
-            GROUP_CONCAT(mt_category.category_label SEPARATOR ' ') AS tags,
-            mt_author.author_nickname AS author_name
-          FROM mt_entry
-          INNER JOIN mt_author
-            ON mt_entry.entry_author_id=mt_author.author_id
-          INNER JOIN mt_placement
-            ON mt_entry.entry_id=mt_placement.placement_entry_id
-          INNER JOIN mt_category
-            ON mt_placement.placement_category_id=mt_category.category_id
-          WHERE mt_entry.entry_atom_id LIKE '%www.nearinfinity.com%'
-            AND mt_entry.entry_atom_id NOT LIKE '%home%'
-          GROUP BY mt_entry.entry_id
-          ORDER BY mt_entry.entry_id"
+                  mt_entry.entry_atom_id AS entry_type,
+                  mt_entry.entry_basename AS entry_url_name,
+                  mt_entry.entry_text AS text,
+                  mt_entry.entry_text_more AS text_more,
+                  mt_entry.entry_authored_on AS authored_on,
+                  mt_entry.entry_title AS title,
+                  mt_entry.entry_convert_breaks AS extension,
+                  GROUP_CONCAT(mt_category.category_label SEPARATOR ' ') AS tags,
+                  mt_author.author_nickname AS author_name
+                FROM mt_entry
+                INNER JOIN mt_author
+                  ON mt_entry.entry_author_id=mt_author.author_id
+                LEFT JOIN mt_placement
+                  ON mt_entry.entry_id=mt_placement.placement_entry_id
+                LEFT JOIN mt_category
+                  ON mt_placement.placement_category_id=mt_category.category_id
+                WHERE mt_entry.entry_atom_id LIKE '%nearinfinity.com%'
+                  AND mt_entry.entry_atom_id NOT LIKE '%home%'
+                GROUP BY mt_entry.entry_id
+                ORDER BY mt_entry.entry_id"
 
   ASSET_QUERY = "SELECT
                   asset_file_path AS path,
@@ -88,9 +88,10 @@ module NIC_BLOG_IMPORT
       # Fix all the asset paths and move assets
       begin
         self.correct_post_assets(db, file_location, content)
-      rescue
+      rescue Exception => e
         puts "An error occured when trying to move and correct the assets for post :"
-        puts post.inspect
+        puts post[:title]
+        puts e.message
       end
 
       # create the front yaml meta data
@@ -99,7 +100,7 @@ module NIC_BLOG_IMPORT
         'layout' => entry_type[:url],
         'title' => post[:title].to_s,
         'date' => date,
-        'tags' => post[:tags]
+        'tags' => post[:tags] || ''
       }.delete_if { |k,v| v.nil? || v == '' }.to_yaml
 
       #create the directory for the post
