@@ -40,7 +40,7 @@ module NIC_BLOG_IMPORT
                 WHERE asset_file_path
                 LIKE '%assets%'"
 
-  def self.process(dbname, user, pass, host = 'localhost')
+  def self.process(dbname, user, pass, host = 'localhost', requested_type)
     db = Sequel.mysql(dbname, :user => user, :password => pass, :host => host, :encoding => 'utf8')
 
     db[POST_QUERY].each do |post|
@@ -49,6 +49,7 @@ module NIC_BLOG_IMPORT
 
       # Grab and parse the type of blog, i.e. blog, news, training
       entry_type = self.determine_entry_type post[:entry_type]
+      next if entry_type[:url] != requested_type
 
       # if we cannot parse an entry type then one of our assumptions is incorrect 
       # and this needs to be fixed immediately
@@ -58,7 +59,7 @@ module NIC_BLOG_IMPORT
       end
 
       # determine the file location based on the type and the author
-      file_location = (entry_type[:url] == 'blogs') ? [entry_type[:url], user_name, '_posts'].join('/') : [entry_type[:url], '_posts'].join('/')
+      file_location = (entry_type[:url] == 'blogs') ? [user_name, '_posts'].join('/') : ['_posts'].join('/')
 
       # Ideally, this script would determine the post format (markdown,
       # html, etc) and create files with proper extensions. At this point
@@ -71,10 +72,14 @@ module NIC_BLOG_IMPORT
 
       # full filenames
       file_storage_location = "./#{file_location}/#{file_name_storage}"
-      file_permalink = "/#{entry_type[:permalink]}/#{file_name_url}.html"
+      file_permalink = "/#{entry_type[:permalink]}/#{user_name}/#{file_name_url}.html"
 
       # Grab the post content, be sure to append the addition text
       content = post[:text_more].nil? ? post[:text] : post[:text] + " \n" + post[:text_more]
+      if file_extension == 'html'
+
+      end
+
       next if content.nil?
 
       # Fix all the asset paths and move assets
@@ -111,7 +116,7 @@ module NIC_BLOG_IMPORT
   def self.correct_post_assets(database, new_location, post_content)
     database[ASSET_QUERY].each do |asset|
       #determine the new asset location
-      asset_location = "#{new_location}/assets/"
+      asset_location = "#{new_location}/assets/".sub(/\/\_posts/, '')
 
       # Make the asset folder for a user that has posts
       FileUtils.mkdir_p(asset_location)
@@ -119,9 +124,9 @@ module NIC_BLOG_IMPORT
       #substitute the new asset location into the post
       lookup_string = asset[:path].sub(/\%r/, '/blogs').sub('/\//', '\/')
       
-      if !post_content.sub!(/#{lookup_string}/, "/#{asset_location.sub(/\/\_posts/, '') + asset[:name]}").nil?
+      if !post_content.sub!(/#{lookup_string}/, "/#{asset_location + asset[:name]}").nil?
         # Move the file if it is present in this post
-        FileUtils.cp asset[:path].sub(/assets/, 'blogs-assets').sub(/\%r/, '.'), asset_location
+        FileUtils.cp asset[:path].sub(/assets/, '_blogs-assets').sub(/\%r/, '.'), asset_location
       end
     end
   end
@@ -154,4 +159,4 @@ module NIC_BLOG_IMPORT
 end
 
 ## Actually Imports
-NIC_BLOG_IMPORT.process("MOVABLE_DATA", "root", "")
+NIC_BLOG_IMPORT.process("MOVABLE_DATA", "root", "", 'blogs')
