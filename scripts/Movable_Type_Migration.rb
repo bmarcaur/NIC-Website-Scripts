@@ -11,7 +11,7 @@ module NIC_BLOG_IMPORT
   # This query will pull blog posts from all entries across all blogs. If
   # you've got unpublished, deleted or otherwise hidden posts please sift
   # through the created posts to make sure nothing is accidently published.
-  QUERY = "SELECT
+  POST_QUERY = "SELECT
             mt_entry.entry_atom_id AS entry_type,
             mt_entry.entry_basename AS entry_url_name,
             mt_entry.entry_text AS text,
@@ -33,10 +33,17 @@ module NIC_BLOG_IMPORT
           GROUP BY mt_entry.entry_id
           ORDER BY mt_entry.entry_id"
 
+  ASSET_QUERY = "SELECT
+                  asset_file_path AS path,
+                  asset_file_name AS name
+                FROM mt_asset
+                WHERE asset_file_path
+                LIKE '%assets%'"
+
   def self.process(dbname, user, pass, host = 'localhost')
     db = Sequel.mysql(dbname, :user => user, :password => pass, :host => host, :encoding => 'utf8')
 
-    db[QUERY].each do |post|
+    db[POST_QUERY].each do |post|
       # Concatinate the nickname into the MT like naming structure
       user_name = post[:author_name].downcase.split(' ').join('_')
 
@@ -68,7 +75,14 @@ module NIC_BLOG_IMPORT
 
       # Grab the post content, be sure to append the addition text
       content = post[:text_more].nil? ? post[:text] : post[:text] + " \n" + post[:text_more]
+      next if content.nil?
 
+      # Fix all the asset paths and move assets
+      begin
+        self.correct_post_assets(db, file_location, content)
+      rescue
+        puts post.inspect
+      end
 
       # create the front yaml meta data
       data = {
@@ -88,6 +102,26 @@ module NIC_BLOG_IMPORT
         f.puts data
         f.puts "---"
         f.puts content
+      end
+    end
+  end
+
+  private
+
+  def self.correct_post_assets(database, new_location, post_content)
+    database[ASSET_QUERY].each do |asset|
+      #determine the new asset location
+      asset_location = "#{new_location}/assets/"
+
+      # Make the asset folder for a user that has posts
+      FileUtils.mkdir_p(asset_location)
+
+      #substitute the new asset location into the post
+      lookup_string = asset[:path].sub(/\%r/, '/blogs').sub('/\//', '\/')
+      
+      if !post_content.sub!(/#{lookup_string}/, "/#{asset_location.sub(/\/\_posts/, '') + asset[:name]}").nil?
+        # Move the file if it is present in this post
+        FileUtils.cp asset[:path].sub(/assets/, 'blogs-assets').sub(/\%r/, '.'), asset_location
       end
     end
   end
