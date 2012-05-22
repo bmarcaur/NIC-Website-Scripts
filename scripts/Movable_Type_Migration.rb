@@ -66,7 +66,7 @@ module NIC_BLOG_IMPORT
       date = post[:authored_on]
       jekyll_filename = post[:entry_url_name].gsub(/_/, '-')
       file_extension = self.suffix(post[:extension])
-      file_name_storage = [date.year, date.month, date.day, jekyll_filename].join('-') + '.' + file_extension
+      file_name_storage = [date.year, "%02d" % date.month, "%02d" % date.day, jekyll_filename].join('-') + '.' + file_extension
       file_name_url = post[:entry_url_name]
 
       # full filenames
