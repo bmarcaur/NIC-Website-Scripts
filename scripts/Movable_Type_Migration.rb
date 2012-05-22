@@ -28,8 +28,7 @@ module NIC_BLOG_IMPORT
                   ON mt_entry.entry_id=mt_placement.placement_entry_id
                 LEFT JOIN mt_category
                   ON mt_placement.placement_category_id=mt_category.category_id
-                WHERE mt_entry.entry_atom_id LIKE '%nearinfinity.com%'
-                  AND mt_entry.entry_atom_id NOT LIKE '%home%'
+                WHERE mt_entry.entry_atom_id NOT LIKE '%home%'
                 GROUP BY mt_entry.entry_id
                 ORDER BY mt_entry.entry_id"
 
